@@ -71,7 +71,9 @@ jobs:
         echo "Waiting for service to be ready..."
         sleep 30
         
-        # Test internal service health
+        # Test internal service health - this will fail the workflow if service is not responding
+        echo "Testing MCP server connectivity..."
         kubectl run test-pod --rm -i --restart=Never --image=curlimages/curl -- \
-          curl -f -s -m 10 http://crawl4ai-service.app-crawl4ai.svc.cluster.local:11235/playground || \
-          echo "Internal health check failed (may be expected during startup)"
+          curl -f -s -m 10 http://crawl4ai-service.app-crawl4ai.svc.cluster.local:11235/playground
+        
+        echo "✅ MCP server is responding correctly"
