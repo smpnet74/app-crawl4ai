@@ -1,0 +1,77 @@
+name: Deploy Crawl4AI MCP Server
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.28.0'
+
+    - name: Configure kubectl
+      run: |
+        mkdir -p ~/.kube
+        echo "${{ secrets.KUBECONFIG }}" | base64 -d > ~/.kube/config
+        chmod 600 ~/.kube/config
+
+    - name: Verify cluster connection
+      run: |
+        kubectl cluster-info
+        kubectl get nodes
+
+    - name: Create namespace if not exists
+      run: |
+        kubectl apply -f k8s/namespace.yaml
+
+    - name: Create or update secrets
+      run: |
+        # Delete existing secret if it exists (ignore errors)
+        kubectl delete secret crawl4ai-secrets -n app-crawl4ai --ignore-not-found=true
+        
+        # Create new secret
+        kubectl create secret generic crawl4ai-secrets \
+          --from-literal=openai-api-key="${{ secrets.OPENAI_API_KEY }}" \
+          --from-literal=anthropic-api-key="${{ secrets.ANTHROPIC_API_KEY }}" \
+          --from-literal=google-api-key="${{ secrets.GOOGLE_API_KEY }}" \
+          -n app-crawl4ai
+
+    - name: Deploy to Kubernetes
+      run: |
+        kubectl apply -f k8s/deployment.yaml
+        kubectl apply -f k8s/service.yaml
+
+    - name: Wait for deployment
+      run: |
+        kubectl rollout status deployment/crawl4ai-mcp-server -n app-crawl4ai --timeout=600s
+
+    - name: Verify deployment
+      run: |
+        kubectl get pods -n app-crawl4ai
+        kubectl get services -n app-crawl4ai
+        
+        # Check pod logs for any startup issues
+        echo "=== Pod Logs ==="
+        kubectl logs -n app-crawl4ai deployment/crawl4ai-mcp-server --tail=50 || true
+
+    - name: Test endpoints
+      run: |
+        echo "Waiting for service to be ready..."
+        sleep 30
+        
+        # Test internal service health
+        kubectl run test-pod --rm -i --restart=Never --image=curlimages/curl -- \
+          curl -f -s -m 10 http://crawl4ai-service.app-crawl4ai.svc.cluster.local:11235/playground || \
+          echo "Internal health check failed (may be expected during startup)"

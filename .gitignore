@@ -1,0 +1,29 @@
+# Environment files - never commit secrets!
+.env
+.env.local
+.env.production
+.env.staging
+
+# Kubernetes config
+kubeconfig*
+
+# IDE files
+.vscode/
+.idea/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp

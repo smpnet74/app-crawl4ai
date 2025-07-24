@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: app-crawl4ai
+  labels:
+    app.kubernetes.io/name: crawl4ai
+    app.kubernetes.io/instance: app-crawl4ai
+    app.kubernetes.io/part-of: mcp-servers
+    # Enable Istio Ambient Mesh
+    istio.io/dataplane-mode: ambient
+spec: {}
